@@ -1,2 +1,3 @@
 # jQuery a AJAX
-Ukázkový příklad
+Potřebné technologie:
+* Node JS

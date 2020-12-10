@@ -2,20 +2,20 @@ $(function(){
     /* Inicializace proměnné index, která unikátně identifikuje novou skupinu prvků */
     let index = 0;
     /* Funkce, která přidá skupinu prvků do formuláře */
-    function addGroup(index = 0) {
+    function addGroup(index = 0, obj = {start:'', stop:'', date:''}) {
         return `
         <div class="form-group row p-1 group-time" id="group-${index}">
             <label class="col-sm-1">Start</label>
             <div class="col-sm-2">
-                <input type="time" class="form-control" required name="start" id="start-${index}">
+                <input type="time" class="form-control" required name="start" id="start-${index}" value="${obj.start}">
             </div>
             <label class="col-sm-1">Stop</label>
             <div class="col-sm-2">
-                <input type="time" class="form-control" required name="stop" id="stop-${index}">
+                <input type="time" class="form-control" required name="stop" id="stop-${index}" value="${obj.stop}">
             </div>
             <label class="col-sm-1">Den</label>
             <div class="col-sm-3">
-                <input type="date" class="form-control" required name="date" id="date-${index}">
+                <input type="date" class="form-control" required name="date" id="date-${index}" value="${obj.date}">
             </div>
             <div class="col-sm-2">
                 <button type="button" class="btn btn-danger delete" id="delete-${index}">Smazat</button>
@@ -48,7 +48,67 @@ $(function(){
         return (obj.start.replace(':', '') < obj.stop.replace(':', '')) && obj.date; 
     }
 
-    /* Ošetření události kliknutí na tlačítko Odeslat formulář */
+    function get() {
+        /* Metoda JQuery, která umožňuje použití AJAX */
+        $.ajax({
+            /* Adresa požadavku */
+            url: 'http://localhost:3000/api/times',
+            type: 'GET', // typ použité metody
+            dataType: 'json', // formát přijímaných dat
+            cache: false, // možnost využití vyrovnávací paměti
+            /* V případě úspěšné odpovědi serveru - její součástí jsou posílaná data, stavová zpráva a xhr (XMLHTTPRequest objekt) */
+            success: (data, textStatus, xhr) => {
+                /* Vyčistí obsah elementu s id="times" */
+                $('#times').html(''); 
+                /* Prochází všechna data (pole objektů) */
+                data.forEach(obj => {
+                    $('#times').append(addGroup(index, obj));
+                    /* Ošetření akce kliknutí na tlačítko Smazat - smaže se vybraná skupina prvků */
+                    $('.delete').on('click', function() { 
+                        /* Příklad traverzování - vyhledá se a odstraní celý element - 
+                        předek tlačítka Smazat, který je oddílem s třídou group-time */
+                        $(this).parents('div.group-time').remove();        
+                    });   
+                    /* Index se po přidání prvku zvýší, aby se zajistila jeho unikátnost */ 
+                    index++;
+                });                
+            },
+            /* V případě chyby se v konzoli objeví chybové hlášení */
+            error: (xhr, textStatus, errorThrown) => {
+                console.log(errorThrown);
+            }
+        })
+    }
+
+
+    /* Pošle data na server prostřednictvím metody PUT */
+    function send(data) {
+        $.ajax({
+            /* URL serveru */
+            url: 'http://localhost:3000/api/times',
+            /* Metoda PUT */
+            type: 'PUT',
+            /* Předávaná data */
+            data: data,
+            /* Použitý datový typ - JSON */
+            dataType: 'json',            
+            /* MIME typ */
+            contentType: 'application/json',
+            /* Odpověď po úspěšném přijetí dat */
+            success: (data, textStatus, xhr) => {
+                console.log(textStatus);
+                console.log(data);
+                get();
+            },
+            /* Odpověď po chybě */
+            error: (xhr, textStatus, errorThrown) => {
+                console.log(errorThrown);
+            }
+        })
+    }
+    
+
+    /* Ošetření události kliknutí na tlačítko Aktualizovat data */
     $('#send').on('click', function() {
         /* Nastavení kontrolní proměnné valid - na začátku předpokládáme platný formulář */
         let valid = true;
@@ -81,9 +141,13 @@ $(function(){
         if (!valid) {
            /* Když je formulář nevalidní, zviditelní se chybový alert */ 
            $('#error').removeClass('d-none');
+        } else {
+            /* JSON serializace dat z formuláře */
+            send(JSON.stringify(data));
         }
-        /* JSON serializace dat z formuláře */
-        console.log(JSON.stringify(data));
     });
+
+    /* Načtení dat ze serveru */
+    get();
 
 })
